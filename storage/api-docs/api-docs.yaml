@@ -1,0 +1,1221 @@
+openapi: 3.0.0
+info:
+  title: 'LOGISTIK UNIKOM API'
+  version: 1.0.0
+servers:
+  -
+    url: 'http://perlengkapan.codelabspace.or.id/'
+paths:
+  /api/aktivasi-pengajuan:
+    get:
+      tags:
+        - 'Aktivasi Pengajuan'
+      summary: 'List semua aktivasi pengajuan'
+      operationId: 7898bc783d4bdee028c5c1863371e11f
+      parameters:
+        -
+          name: tipe
+          in: query
+          description: 'Filter tipe pengajuan (kelas, ujian, tahunan)'
+          required: false
+          schema:
+            type: string
+            example: kelas
+      responses:
+        200:
+          description: 'Berhasil ambil data'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - 'Aktivasi Pengajuan'
+      summary: 'Tambah aktivasi'
+      operationId: dc59b6544dad01b139b88563f3807eab
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - id_pengajuan
+                - aktif_mulai
+                - aktif_selesai
+                - tipe
+                - tahun_akademik
+              properties:
+                id_pengajuan:
+                  type: integer
+                  example: 1
+                aktif_mulai:
+                  type: string
+                  example: '2026-01-01'
+                aktif_selesai:
+                  type: string
+                  example: '2026-12-31'
+                tipe:
+                  type: string
+                  example: rutin
+                tahun_akademik:
+                  type: string
+                  example: 2026/2027
+              type: object
+      responses:
+        200:
+          description: 'Berhasil membuat aktivasi'
+      security:
+        -
+          bearerAuth: []
+  '/api/aktivasi-pengajuan/{id}':
+    get:
+      tags:
+        - 'Aktivasi Pengajuan'
+      summary: 'Detail aktivasi'
+      operationId: 5c0a47305749035993267aee851da878
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Detail ditemukan'
+        404:
+          description: 'Data tidak ditemukan'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - 'Aktivasi Pengajuan'
+      summary: 'Update aktivasi'
+      operationId: d90c5670b75fe048c6f9ab869e525f13
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                id_pengajuan:
+                  type: integer
+                aktif_mulai:
+                  type: string
+                aktif_selesai:
+                  type: string
+                tipe:
+                  type: string
+                tahun_akademik:
+                  type: string
+              type: object
+      responses:
+        200:
+          description: 'Berhasil update'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - 'Aktivasi Pengajuan'
+      summary: 'Hapus aktivasi'
+      operationId: 84fece43e382b68ca4a60b9405200d9b
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: 'Berhasil hapus'
+      security:
+        -
+          bearerAuth: []
+  /api/periode-aktif:
+    get:
+      tags:
+        - 'Aktivasi Pengajuan'
+      summary: 'Ambil periode aktif saat ini'
+      operationId: a7f6f21d60de84be4e47ccf2ccd2561a
+      parameters:
+        -
+          name: tipe
+          in: query
+          description: 'kelas | ujian | tahunan'
+          required: false
+          schema:
+            type: string
+            example: ujian
+      responses:
+        200:
+          description: 'Periode aktif ditemukan'
+        404:
+          description: 'Tidak ada periode aktif'
+      security:
+        -
+          bearerAuth: []
+  '/api/aktivasi-pengajuan/{id}/activate':
+    patch:
+      tags:
+        - 'Aktivasi Pengajuan'
+      summary: 'Aktifkan periode'
+      operationId: ff8559bf2c0d49f45ee59256f5c9e369
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: 'Berhasil aktivasi'
+      security:
+        -
+          bearerAuth: []
+  /api/login:
+    post:
+      tags:
+        - Auth
+      summary: Login
+      operationId: 44212a9096e4b09358281e9ec8a0701d
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  example: admin@gmail.com
+                password:
+                  type: string
+                  example: password
+              type: object
+      responses:
+        200:
+          description: 'Login success'
+  /api/me:
+    get:
+      tags:
+        - Auth
+      summary: 'Get profile'
+      operationId: f606b7972b0f95109c9cd5b591061f41
+      responses:
+        200:
+          description: OK
+      security:
+        -
+          bearerAuth: []
+  /api/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout
+      operationId: 79854151e609bd20032aa5aa4d5a35c0
+      responses:
+        200:
+          description: OK
+      security:
+        -
+          bearerAuth: []
+  /api/barang:
+    get:
+      tags:
+        - Barang
+      summary: 'List barang'
+      operationId: f9b86624b1ea03a5758e8eae04bc6621
+      responses:
+        200:
+          description: OK
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Barang
+      summary: 'Create barang'
+      operationId: babddf8dd1e89ef20f9f701a5d0b130e
+      responses:
+        201:
+          description: Created
+      security:
+        -
+          bearerAuth: []
+  '/api/barang/{id}':
+    get:
+      tags:
+        - Barang
+      summary: 'Detail barang'
+      operationId: 57e3d556d5baa0e628ac33da7d19b222
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+      responses:
+        200:
+          description: OK
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - Barang
+      summary: 'Update barang'
+      operationId: a8412c1cad62703ba5a3e430dc6bc5c1
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+      responses:
+        200:
+          description: Updated
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - Barang
+      summary: 'Delete barang'
+      operationId: 3bb31845049c03c5405f083825d70c1b
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+      responses:
+        200:
+          description: Deleted
+      security:
+        -
+          bearerAuth: []
+  '/api/barang-pengajuan-lainnya/{id}/approve':
+    patch:
+      tags:
+        - 'Barang Pengajuan Lainnya'
+      summary: 'Approve barang manual'
+      operationId: b47fdc57e32ab8987400bf5c92f0890f
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID Barang Pengajuan Lainnya'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - jumlah_disetujui
+                - status
+              properties:
+                jumlah_disetujui:
+                  type: integer
+                  example: 2
+                status:
+                  description: '1=approve, 2=reject'
+                  type: integer
+                  example: 1
+              type: object
+      responses:
+        200:
+          description: 'Barang manual berhasil di approve'
+        422:
+          description: 'Validasi gagal'
+      security:
+        -
+          bearerAuth: []
+  /api/daftar-pengajuan:
+    get:
+      tags:
+        - 'Daftar Pengajuan'
+      summary: 'List semua pengajuan'
+      operationId: ec4c0fbb7362d39c8bd1aafa5662cbbe
+      responses:
+        200:
+          description: 'List pengajuan berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - 'Daftar Pengajuan'
+      summary: 'Buat pengajuan baru'
+      operationId: 0171a190b4cd6a614e5690bd1f16aa7b
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - aktivasi_pengajuan_id
+              properties:
+                aktivasi_pengajuan_id:
+                  type: integer
+                  example: 1
+                surat_pengajuan:
+                  description: 'File surat pengajuan'
+                  type: string
+                  format: binary
+                catatan:
+                  type: string
+                  example: 'Pengajuan kebutuhan ATK'
+              type: object
+      responses:
+        201:
+          description: 'Pengajuan berhasil dibuat'
+        422:
+          description: 'Periode pengajuan tidak aktif'
+      security:
+        -
+          bearerAuth: []
+  '/api/daftar-pengajuan/{id}':
+    get:
+      tags:
+        - 'Daftar Pengajuan'
+      summary: 'Detail pengajuan'
+      operationId: 4d09c10f5aaa2704f5a46a836196bc1a
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID pengajuan'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Detail pengajuan berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - 'Daftar Pengajuan'
+      summary: 'Update pengajuan'
+      operationId: 78901270f2835c0c2cd258f09b260299
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID pengajuan'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                catatan:
+                  type: string
+                  example: 'Update catatan pengajuan'
+              type: object
+      responses:
+        200:
+          description: 'Pengajuan berhasil diupdate'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - 'Daftar Pengajuan'
+      summary: 'Hapus pengajuan'
+      operationId: ec3cd4d42d08e2adb9128a5cc8f27ba8
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID pengajuan'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Pengajuan berhasil dihapus'
+      security:
+        -
+          bearerAuth: []
+  /api/jabatan:
+    get:
+      tags:
+        - Jabatan
+      summary: 'List jabatan'
+      operationId: eb3ea5daef894a1ef1a3166d5580eac9
+      responses:
+        200:
+          description: 'List jabatan berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Jabatan
+      summary: 'Tambah jabatan'
+      operationId: e2529bfa69ad89adf860722015107242
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - nama
+              properties:
+                nama:
+                  type: string
+                  example: 'Staff IT'
+              type: object
+      responses:
+        201:
+          description: 'Jabatan berhasil dibuat'
+      security:
+        -
+          bearerAuth: []
+  '/api/jabatan/{id}':
+    get:
+      tags:
+        - Jabatan
+      summary: 'Detail jabatan'
+      operationId: 2304bea62e5cfd1ab2bd4b4e493ee7c4
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID jabatan'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Detail jabatan berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - Jabatan
+      summary: 'Update jabatan'
+      operationId: 6dcc6e9bfde792a7931e3fe2e87aae1e
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID jabatan'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                nama:
+                  type: string
+                  example: 'Supervisor IT'
+              type: object
+      responses:
+        200:
+          description: 'Jabatan berhasil diupdate'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - Jabatan
+      summary: 'Hapus jabatan'
+      operationId: e1f873c9ffaa38a454937413e9967976
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID jabatan'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Jabatan berhasil dihapus'
+      security:
+        -
+          bearerAuth: []
+  /api/pengajuan/my:
+    get:
+      tags:
+        - Pengajuan
+      summary: 'Pengajuan milik user login'
+      operationId: 8e0da59217882fe7ee27c00843d047fe
+      responses:
+        200:
+          description: 'Berhasil mengambil pengajuan saya'
+      security:
+        -
+          bearerAuth: []
+  /api/histori-pengajuan:
+    get:
+      tags:
+        - Pengajuan
+      summary: 'Histori pengajuan berdasarkan tahun'
+      operationId: 901df0dbf83db9d59c1b5496c8cba460
+      responses:
+        200:
+          description: 'Berhasil mengambil histori pengajuan'
+      security:
+        -
+          bearerAuth: []
+  /api/pengumuman:
+    get:
+      tags:
+        - Pengumuman
+      summary: 'List pengumuman'
+      operationId: e18e6d8c9c384d2f98e051d1b9d8b33c
+      responses:
+        200:
+          description: 'List pengumuman berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Pengumuman
+      summary: 'Tambah pengumuman'
+      operationId: ef1a1de3985c3fdc64a7e61515a4ad27
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - judul
+              properties:
+                judul:
+                  type: string
+                  example: 'Pengumuman Libur Nasional'
+                deskripsi:
+                  type: string
+                  example: 'Libur tanggal 17 Agustus'
+                gambar:
+                  description: 'Upload gambar pengumuman'
+                  type: string
+                  format: binary
+              type: object
+      responses:
+        201:
+          description: 'Pengumuman berhasil dibuat'
+      security:
+        -
+          bearerAuth: []
+  '/api/pengumuman/{id}':
+    get:
+      tags:
+        - Pengumuman
+      summary: 'Detail pengumuman'
+      operationId: ff9d68e9a77b7f38f0da55aba813ca4a
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID pengumuman'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Detail pengumuman berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Pengumuman
+      summary: 'Update pengumuman'
+      description: 'Gunakan POST + multipart/form-data jika update dengan gambar'
+      operationId: 7280226aee65d7a6dae5fa09788948f2
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              properties:
+                judul:
+                  type: string
+                  example: 'Update Pengumuman'
+                deskripsi:
+                  type: string
+                  example: 'Isi pengumuman terbaru'
+                gambar:
+                  type: string
+                  format: binary
+              type: object
+      responses:
+        200:
+          description: 'Pengumuman berhasil diupdate'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - Pengumuman
+      summary: 'Hapus pengumuman'
+      operationId: 3c18d6a818f39a57e5f83f300300b8e2
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Pengumuman berhasil dihapus'
+      security:
+        -
+          bearerAuth: []
+  /api/swagger-test:
+    get:
+      tags:
+        - Test
+      summary: 'Test swagger'
+      operationId: 2f6df9bf8580c077d8067dcc7cf07eed
+      responses:
+        200:
+          description: OK
+  /api/pengajuan:
+    get:
+      tags:
+        - Pengajuan
+      summary: 'List master tipe pengajuan'
+      operationId: 9f3d6f13e0d2dcd2baf82fae47badacd
+      responses:
+        200:
+          description: 'Berhasil ambil data pengajuan'
+      security:
+        -
+          bearerAuth: []
+  /api/unit-types:
+    get:
+      tags:
+        - 'Unit Type'
+      summary: 'List unit type (support filter parent_id)'
+      description: 'Jika parent_id tidak dikirim → tampilkan tree parent + children. Jika parent_id=null → hanya parent. Jika parent_id=id → children berdasarkan parent.'
+      operationId: 9576d5a63c1ad2d38100a0dee969cb30
+      parameters:
+        -
+          name: parent_id
+          in: query
+          description: 'Filter parent_id (isi null atau id)'
+          required: false
+          schema:
+            type: string
+            example: 'null'
+      responses:
+        200:
+          description: 'List unit type berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - 'Unit Type'
+      summary: 'Tambah unit type'
+      operationId: c8f66de70c012772bd479cd5608615ef
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: Fakultas
+                parent_id:
+                  type: integer
+                  example: null
+                  nullable: true
+              type: object
+      responses:
+        201:
+          description: 'Unit type berhasil dibuat'
+      security:
+        -
+          bearerAuth: []
+  '/api/unit-types/{id}':
+    get:
+      tags:
+        - 'Unit Type'
+      summary: 'Detail unit type beserta children'
+      operationId: c476703e1c68abb56815512d85cc99c2
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID unit type'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Detail unit type berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - 'Unit Type'
+      summary: 'Update unit type'
+      operationId: 612ca9893ee5d7d9854c25d50f3b156a
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID unit type'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  example: 'Program Studi'
+                parent_id:
+                  type: integer
+                  example: 1
+                  nullable: true
+              type: object
+      responses:
+        200:
+          description: 'Unit type berhasil diupdate'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - 'Unit Type'
+      summary: 'Hapus unit type'
+      operationId: 1f64478aa05a0eca0ab989a4122a2568
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID unit type'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Unit type berhasil dihapus'
+      security:
+        -
+          bearerAuth: []
+  /api/users:
+    get:
+      tags:
+        - User
+      summary: 'List user'
+      operationId: d7a57f4d7de18fb0f92501172472c9b6
+      responses:
+        200:
+          description: 'List user berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - User
+      summary: 'Tambah user'
+      operationId: 9fea6f2adcb69614c521a7733358382d
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - username
+                - email
+                - password
+                - jenis_kelamin
+                - jabatan_id
+                - unit_id
+                - role
+              properties:
+                username:
+                  type: string
+                  example: gilang
+                email:
+                  type: string
+                  example: gilang@mail.com
+                password:
+                  type: string
+                  example: password123
+                nip:
+                  type: string
+                  example: '12345678'
+                jenis_kelamin:
+                  type: string
+                  example: Pria
+                jabatan_id:
+                  type: integer
+                  example: 1
+                unit_id:
+                  type: integer
+                  example: 1
+                role:
+                  type: string
+                  example: user
+              type: object
+      responses:
+        201:
+          description: 'User berhasil dibuat'
+      security:
+        -
+          bearerAuth: []
+  '/api/users/{id}':
+    get:
+      tags:
+        - User
+      summary: 'Detail user'
+      operationId: 40a5104e23b52137e78c3d3ac48b88a8
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Detail user berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - User
+      summary: 'Update user'
+      operationId: b166772cec9714067040e77cf14beeba
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                username:
+                  type: string
+                  example: 'gilang update'
+                email:
+                  type: string
+                  example: baru@mail.com
+                password:
+                  type: string
+                  example: password123
+                nip:
+                  type: string
+                  example: '87654321'
+                jenis_kelamin:
+                  type: string
+                  example: Wanita
+                jabatan_id:
+                  type: integer
+                  example: 1
+                unit_id:
+                  type: integer
+                  example: 1
+                role:
+                  type: string
+                  example: admin
+              type: object
+      responses:
+        200:
+          description: 'User berhasil diupdate'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - User
+      summary: 'Hapus user'
+      operationId: ce06860a51ab016ef66e753544fe4563
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'user berhasil dihapus'
+      security:
+        -
+          bearerAuth: []
+  '/api/users/{id}/reset-password':
+    patch:
+      tags:
+        - User
+      summary: 'Reset password user'
+      operationId: 559c161c92a3a48fa5a9e0522d02011d
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  example: passwordbaru123
+              type: object
+      responses:
+        200:
+          description: 'password berhasil direset'
+      security:
+        -
+          bearerAuth: []
+  /api/users/update-profile:
+    post:
+      tags:
+        - User
+      summary: 'Update profile user login'
+      operationId: a0655de7237e0e2e3ba2c54a41465bd7
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              properties:
+                username:
+                  type: string
+                  example: 'gilang update'
+                foto:
+                  type: string
+                  format: binary
+              type: object
+      responses:
+        200:
+          description: 'profile berhasil diupdate'
+      security:
+        -
+          bearerAuth: []
+  /api/vendors:
+    get:
+      tags:
+        - Vendor
+      summary: 'List vendor'
+      operationId: 929b8cb18010fcd1dc1b6b0e7f50b2c1
+      responses:
+        200:
+          description: 'List vendor berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Vendor
+      summary: 'Create vendor'
+      operationId: 008f99a2866feebf16ddd9752bce45fb
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - nama
+              properties:
+                nama:
+                  type: string
+                  example: 'PT Sumber Makmur'
+                kontak_person:
+                  type: string
+                  example: 'Budi Santoso'
+                alamat:
+                  type: string
+                  example: Bandung
+              type: object
+      responses:
+        201:
+          description: 'Vendor berhasil dibuat'
+      security:
+        -
+          bearerAuth: []
+  '/api/vendors/{id}':
+    get:
+      tags:
+        - Vendor
+      summary: 'Detail vendor'
+      operationId: c911ff209b31017e708fdb577049d606
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID Vendor'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Detail vendor berhasil diambil'
+      security:
+        -
+          bearerAuth: []
+    put:
+      tags:
+        - Vendor
+      summary: 'Update vendor'
+      operationId: b72d24723470fdac8760ef17243ede57
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID Vendor'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                nama:
+                  type: string
+                  example: 'PT Sumber Makmur Update'
+                kontak_person:
+                  type: string
+                  example: 'Budi Santoso Update'
+                alamat:
+                  type: string
+                  example: Jakarta
+              type: object
+      responses:
+        200:
+          description: 'Vendor berhasil diupdate'
+        422:
+          description: 'Validasi gagal'
+      security:
+        -
+          bearerAuth: []
+    delete:
+      tags:
+        - Vendor
+      summary: 'Delete vendor'
+      operationId: d4a9ffe23380989c68745b209a6ed15e
+      parameters:
+        -
+          name: id
+          in: path
+          description: 'ID Vendor'
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: 'Vendor berhasil dihapus'
+        422:
+          description: 'Vendor masih digunakan barang'
+      security:
+        -
+          bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+tags:
+  -
+    name: 'Aktivasi Pengajuan'
+    description: 'Aktivasi Pengajuan'
+  -
+    name: Auth
+    description: Auth
+  -
+    name: Barang
+    description: Barang
+  -
+    name: 'Barang Pengajuan Lainnya'
+    description: 'Barang Pengajuan Lainnya'
+  -
+    name: 'Daftar Pengajuan'
+    description: 'Daftar Pengajuan'
+  -
+    name: Jabatan
+    description: Jabatan
+  -
+    name: Pengajuan
+    description: Pengajuan
+  -
+    name: Pengumuman
+    description: Pengumuman
+  -
+    name: Test
+    description: Test
+  -
+    name: 'Unit Type'
+    description: 'Unit Type'
+  -
+    name: User
+    description: User
+  -
+    name: Vendor
+    description: Vendor

@@ -1,0 +1,25 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    
+    public function up(): void
+    {
+        Schema::create('pengajuan', function (Blueprint $table) {
+            $table->id();
+            $table->enum('tipe', ['kelas', 'tahunan', 'ujian', 'nonrutin']);
+            $table->enum('semester', ['ganjil', 'genap', 'tahunan']);
+            $table->enum('ujian', ['uts', 'uas', 'Default'])->nullable();
+        });
+    }
+
+    
+    public function down(): void
+    {
+        Schema::dropIfExists('pengajuan');
+    }
+};

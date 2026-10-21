@@ -1,0 +1,2862 @@
+openapi: 3.0.0
+info:
+  title: LOGISTIK UNIKOM API
+  version: 4.0.0
+  description: |
+    API untuk sistem manajemen logistik dan pengajuan barang di Universitas Komputer Indonesia.
+    
+    ### Fitur Utama:
+    - **Autentikasi** dengan Sanctum Token
+    - **Manajemen Pengajuan** (tahunan, ujian, kelas)
+    - **Aktivasi Periode Pengajuan**
+    - **Manajemen Barang** dan Vendor
+    - **Laporan & Statistik**
+    
+    ### Tipe User:
+    - **Admin** - Kelola semua data sistem
+    - **User** - Buat pengajuan barang
+  contact:
+    name: Support IT
+    email: support@unikom.ac.id
+  license:
+    name: MIT
+
+servers:
+  - url: http://perlengkapan.codelabspace.or.id/
+    description: Production Server
+  - url: http://localhost:8000/
+    description: Local Development
+
+tags:
+  - name: Auth
+    description: Autentikasi & Profil User
+  - name: Aktivasi Pengajuan
+    description: Manajemen periode pengajuan dan aktivasi
+  - name: Barang
+    description: Master data barang
+  - name: Pengajuan
+    description: CRUD pengajuan barang
+  - name: Jabatan
+    description: Master data jabatan (Admin Only)
+  - name: Unit Type
+    description: Master data unit/bagian organisasi (Admin Only)
+  - name: User
+    description: Manajemen user (Admin Only)
+  - name: Vendor
+    description: Master data vendor (Admin Only)
+  - name: Pengumuman
+    description: Kelola pengumuman sistem
+  - name: Test
+    description: Endpoint testing
+
+paths:
+  # ==================== AUTH ====================
+  /api/login:
+    post:
+      tags:
+        - Auth
+      summary: Login User
+      description: Login menggunakan username dan password. Mengembalikan Bearer Token untuk autentikasi.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: admin
+                  description: Username terdaftar di sistem
+                password:
+                  type: string
+                  format: password
+                  example: password123
+                  description: Password akun
+      responses:
+        200:
+          description: Login berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        example: "1|abcdef123456..."
+                        description: Bearer Token untuk request berikutnya
+                      user:
+                        $ref: '#/components/schemas/UserDetail'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/me:
+    get:
+      tags:
+        - Auth
+      summary: Get Profile User Login
+      description: Ambil data profil user yang sedang login beserta jabatan dan unit.
+      operationId: getProfile
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Profil berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserDetail'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout User
+      description: Logout dan hapus token akses yang sedang digunakan.
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Logout berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "logout berhasil"
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/profile:
+    post:
+      tags:
+        - Auth
+      summary: Update Profil User Login
+      description: Update username dan foto profil user yang sedang login.
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: gilang_baru
+                  description: Username baru (opsional)
+                foto:
+                  type: string
+                  format: binary
+                  description: File foto profil (jpg, png, jpeg max 2MB)
+      responses:
+        200:
+          description: Profil berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UserDetail'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  # ==================== AKTIVASI PENGAJUAN ====================
+  /api/aktivasi-pengajuan:
+    get:
+      tags:
+        - Aktivasi Pengajuan
+      summary: List Semua Aktivasi Pengajuan
+      description: Ambil daftar semua periode aktivasi pengajuan. Bisa difilter berdasarkan tipe pengajuan.
+      operationId: listAktivasiPengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tipe
+          in: query
+          description: Filter berdasarkan tipe pengajuan
+          schema:
+            type: string
+            enum: [tahunan, ujian, kelas]
+            example: tahunan
+      responses:
+        200:
+          description: List aktivasi berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AktivasiPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Aktivasi Pengajuan
+      summary: Buat Aktivasi Pengajuan Baru
+      description: Buat periode aktivasi pengajuan baru. **Hanya Admin.**
+      operationId: createAktivasiPengajuan
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id_pengajuan
+                - aktif_mulai
+                - aktif_selesai
+                - tipe
+                - tahun_akademik
+              properties:
+                id_pengajuan:
+                  type: integer
+                  example: 1
+                  description: ID tipe pengajuan
+                aktif_mulai:
+                  type: string
+                  format: date
+                  example: "2026-01-01"
+                  description: Tanggal mulai periode aktif
+                aktif_selesai:
+                  type: string
+                  format: date
+                  example: "2026-01-31"
+                  description: Tanggal selesai periode aktif
+                tipe:
+                  type: string
+                  enum: [rutin, nonrutin]
+                  example: rutin
+                tahun_akademik:
+                  type: string
+                  example: "2025/2026"
+      responses:
+        201:
+          description: Aktivasi berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/AktivasiPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/aktivasi-pengajuan/{id}:
+    get:
+      tags:
+        - Aktivasi Pengajuan
+      summary: Detail Aktivasi Pengajuan
+      description: Ambil detail aktivasi pengajuan berdasarkan ID.
+      operationId: getAktivasiPengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: Detail aktivasi berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/AktivasiPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Aktivasi Pengajuan
+      summary: Update Aktivasi Pengajuan
+      description: Update data aktivasi pengajuan. **Hanya Admin.**
+      operationId: updateAktivasiPengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id_pengajuan:
+                  type: integer
+                aktif_mulai:
+                  type: string
+                  format: date
+                aktif_selesai:
+                  type: string
+                  format: date
+                tipe:
+                  type: string
+                  enum: [rutin, nonrutin]
+                tahun_akademik:
+                  type: string
+      responses:
+        200:
+          description: Aktivasi berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/AktivasiPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    delete:
+      tags:
+        - Aktivasi Pengajuan
+      summary: Hapus Aktivasi Pengajuan
+      description: Hapus periode aktivasi pengajuan. **Hanya Admin.**
+      operationId: deleteAktivasiPengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Aktivasi berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Aktivasi berhasil dihapus"
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /api/periode-aktif:
+    get:
+      tags:
+        - Aktivasi Pengajuan
+      summary: Ambil Periode Aktif Saat Ini
+      description: |
+        Ambil periode pengajuan yang sedang aktif (dalam range tanggal hari ini).
+        Bisa difilter berdasarkan tipe pengajuan.
+      operationId: getCurrentActivePeriod
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tipe
+          in: query
+          description: Filter berdasarkan tipe pengajuan
+          schema:
+            type: string
+            enum: [tahunan, ujian, kelas]
+            example: tahunan
+      responses:
+        200:
+          description: Periode aktif ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AktivasiPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          description: Tidak ada periode yang sedang aktif
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/aktivasi-pengajuan/{id}/activate:
+    patch:
+      tags:
+        - Aktivasi Pengajuan
+      summary: Aktifkan Periode Pengajuan
+      description: Aktifkan periode pengajuan agar user bisa mulai mengajukan. **Hanya Admin.**
+      operationId: activatePeriod
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Periode berhasil diaktifkan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Periode aktivasi siap digunakan"
+                  data:
+                    $ref: '#/components/schemas/AktivasiPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /api/aktivasi-pengajuan/{id}/summary:
+    get:
+      tags:
+        - Aktivasi Pengajuan
+      summary: Ringkasan & Statistik Pengajuan
+      description: |
+        Ambil ringkasan pengajuan untuk satu periode aktivasi termasuk:
+        - Statistik jumlah pengajuan
+        - Detail pengajuan per user/unit
+        - Status barang yang diajukan
+        
+        **Hanya Admin.**
+      operationId: getAktivasiSummary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Ringkasan berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      aktivasi:
+                        $ref: '#/components/schemas/AktivasiPengajuan'
+                      statistik:
+                        type: object
+                        properties:
+                          jumlah_pengajuan_masuk:
+                            type: integer
+                            example: 15
+                          total_pengaju:
+                            type: integer
+                            example: 20
+                      detail_pengajuan:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            nama:
+                              type: string
+                            unit:
+                              type: string
+                            jabatan:
+                              type: string
+                            status:
+                              type: string
+                              enum: [Sudah Pengajuan, Belum Pengajuan]
+                            barang:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  nama_barang:
+                                    type: string
+                                  qty:
+                                    type: integer
+                                  jumlah_disetujui:
+                                    type: integer
+                                  status:
+                                    type: string
+                                  vendor:
+                                    type: string
+                            barang_lainnya:
+                              type: array
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== BARANG ====================
+  /api/barang:
+    get:
+      tags:
+        - Barang
+      summary: List Semua Barang
+      description: Ambil daftar semua master barang beserta vendor-nya.
+      operationId: listBarang
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List barang berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Barang'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Barang
+      summary: Buat Barang Baru
+      description: Buat master data barang baru. **Hanya Admin.**
+      operationId: createBarang
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nama
+                - vendor_id
+              properties:
+                nama:
+                  type: string
+                  example: "Kertas A4 80gsm"
+                  description: Nama barang
+                vendor_id:
+                  type: integer
+                  example: 1
+                  description: ID vendor supplier
+      responses:
+        201:
+          description: Barang berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Barang'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/barang/{id}:
+    get:
+      tags:
+        - Barang
+      summary: Detail Barang
+      description: Ambil detail barang beserta informasi vendor-nya.
+      operationId: getBarang
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Detail barang berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Barang'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Barang
+      summary: Update Barang
+      description: Update data barang. **Hanya Admin.**
+      operationId: updateBarang
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nama:
+                  type: string
+                vendor_id:
+                  type: integer
+      responses:
+        200:
+          description: Barang berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Barang'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    delete:
+      tags:
+        - Barang
+      summary: Hapus Barang
+      description: Hapus master data barang. **Hanya Admin.**
+      operationId: deleteBarang
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Barang berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "deleted"
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== PENGAJUAN ====================
+  /api/daftar-pengajuan:
+    get:
+      tags:
+        - Pengajuan
+      summary: List Semua Pengajuan
+      description: |
+        Ambil daftar semua pengajuan beserta barang dan barang lainnya.
+        Menampilkan seluruh pengajuan yang ada.
+      operationId: listPengajuan
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List pengajuan berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DaftarPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/daftar-pengajuan/full:
+    post:
+      tags:
+        - Pengajuan
+      summary: Buat Pengajuan Baru (Full)
+      description: |
+        Buat pengajuan barang baru dengan detail lengkap:
+        - Daftar barang dari master
+        - Barang lainnya (custom/manual)
+        - File surat pengajuan
+        - Bukti foto untuk barang manual
+        
+        **Format pengajuan:**
+        - Tipe: tahunan, ujian, atau kelas
+        - Barang bisa dikirim sebagai JSON string atau array
+        - Setiap barang manual bisa punya bukti foto (bukti_foto_0, bukti_foto_1, etc)
+      operationId: createPengajuanFull
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - tipe
+              properties:
+                tipe:
+                  type: string
+                  enum: [tahunan, ujian, kelas]
+                  example: tahunan
+                  description: Tipe pengajuan
+                date:
+                  type: string
+                  format: date
+                  example: "2026-07-13"
+                  description: Tanggal pengajuan (opsional)
+                surat_pengajuan:
+                  type: string
+                  format: binary
+                  description: File surat pengajuan (pdf, doc, docx - max 2MB)
+                barang:
+                  type: string
+                  example: '[{"id_barang": 1, "jumlah": 10}]'
+                  description: 'JSON array barang dari master | Format [{"id_barang": int, "jumlah": int}]'
+                barang_lainnya:
+                  type: string
+                  example: '[{"nama": "Kabel HDMI", "jumlah": 5, "kategori": "habis_pakai", "satuan": "pcs", "alasan": "Kebutuhan laboratorium"}]'
+                  description: |
+                    JSON array barang manual | Format:
+                    [{"nama": string, "jumlah": int, "kategori": "habis_pakai|tidak_habis_pakai", "satuan": string, "alasan": string}]
+                bukti_foto_0:
+                  type: string
+                  format: binary
+                  description: Bukti foto untuk barang_lainnya index 0 (jpg, png, jpeg - max 2MB)
+                bukti_foto_1:
+                  type: string
+                  format: binary
+                  description: Bukti foto untuk barang_lainnya index 1 (opsional)
+      responses:
+        201:
+          description: Pengajuan berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/DaftarPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        422:
+          description: Validasi gagal atau periode pengajuan tidak aktif
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/daftar-pengajuan/{id}:
+    get:
+      tags:
+        - Pengajuan
+      summary: Detail Pengajuan
+      description: |
+        Ambil detail pengajuan beserta:
+        - List barang yang diajukan
+        - Barang manual/lainnya
+        - Status approval per barang
+        
+        **Proteksi akses:** User hanya bisa lihat pengajuan miliknya.
+      operationId: getPengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Detail pengajuan berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/DaftarPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          description: User tidak punya akses ke pengajuan ini
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Pengajuan
+      summary: Update Pengajuan
+      description: Update catatan/keterangan pengajuan. **User hanya bisa update pengajuan sendiri.**
+      operationId: updatePengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                catatan:
+                  type: string
+                  example: "Update perubahan kebutuhan barang"
+      responses:
+        200:
+          description: Pengajuan berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/DaftarPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Pengajuan
+      summary: Hapus Pengajuan
+      description: Hapus pengajuan. **User hanya bisa hapus pengajuan sendiri yang belum di-approve.**
+      operationId: deletePengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Pengajuan berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  /api/pengajuan/my:
+    get:
+      tags:
+        - Pengajuan
+      summary: Pengajuan Milik User Login
+      description: Ambil semua pengajuan milik user yang sedang login.
+      operationId: getMyPengajuan
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Pengajuan saya berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DaftarPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/histori-pengajuan:
+    get:
+      tags:
+        - Pengajuan
+      summary: Histori Pengajuan Dengan Filter
+      description: |
+        Ambil histori pengajuan dengan filter:
+        - id_aktivasi: Filter berdasarkan periode
+        - jabatan_id: Filter berdasarkan jabatan user
+        - bagian_id: Filter berdasarkan unit/bagian
+      operationId: getHistoriPengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id_aktivasi
+          in: query
+          schema:
+            type: integer
+        - name: jabatan_id
+          in: query
+          schema:
+            type: integer
+        - name: bagian_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Histori pengajuan berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DaftarPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/histori-pengajuan/my:
+    get:
+      tags:
+        - Pengajuan
+      summary: Histori Pengajuan Saya
+      description: Ambil histori pengajuan milik user login, bisa difilter per tahun.
+      operationId: getMyHistoriPengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tahun
+          in: query
+          description: Filter berdasarkan tahun
+          schema:
+            type: integer
+            example: 2025
+      responses:
+        200:
+          description: Histori pengajuan saya berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DaftarPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== BARANG PENGAJUAN (ADMIN) ====================
+  /api/admin/barang-pengajuan/{id}/approve:
+    patch:
+      tags:
+        - Pengajuan
+      summary: Approve Barang dari Master
+      description: |
+        Approve atau reject barang dari master yang diajukan user.
+        **Hanya Admin.**
+      operationId: approveBarangPengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - jumlah_disetujui
+                - status
+              properties:
+                jumlah_disetujui:
+                  type: integer
+                  example: 8
+                  description: Jumlah barang yang disetujui
+                status:
+                  type: integer
+                  enum: [1, 2]
+                  example: 1
+                  description: 1 = Approve, 2 = Reject
+      responses:
+        200:
+          description: Barang berhasil di-approve
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/admin/barang-pengajuan-lainnya/{id}/approve:
+    patch:
+      tags:
+        - Pengajuan
+      summary: Approve Barang Manual
+      description: |
+        Approve atau reject barang manual/lainnya yang diajukan user.
+        **Hanya Admin.**
+      operationId: approveBarangPengajuanLainnya
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: ID Barang Pengajuan Lainnya
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - jumlah_disetujui
+                - status
+              properties:
+                jumlah_disetujui:
+                  type: integer
+                  example: 5
+                  description: Jumlah barang yang disetujui
+                status:
+                  type: integer
+                  enum: [1, 2]
+                  example: 1
+                  description: 1 = Approve, 2 = Reject
+      responses:
+        200:
+          description: Barang manual berhasil di-approve
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Barang manual berhasil di approve"
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  # ==================== PENGAJUAN MASTER ====================
+  /api/pengajuan:
+    get:
+      tags:
+        - Pengajuan
+      summary: List Master Tipe Pengajuan
+      description: Ambil daftar master tipe pengajuan (tahunan, ujian, kelas).
+      operationId: getMasterPengajuan
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List master pengajuan berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        tipe:
+                          type: string
+                          enum: [tahunan, ujian, kelas]
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== VENDOR ====================
+  /api/vendors:
+    get:
+      tags:
+        - Vendor
+      summary: List Vendor
+      description: Ambil daftar semua vendor/supplier. **Hanya Admin.**
+      operationId: listVendor
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List vendor berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vendor'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Vendor
+      summary: Buat Vendor Baru
+      description: Buat vendor/supplier baru. **Hanya Admin.**
+      operationId: createVendor
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nama
+              properties:
+                nama:
+                  type: string
+                  example: "PT Sumber Makmur"
+                kontak_person:
+                  type: string
+                  example: "Budi Santoso"
+                alamat:
+                  type: string
+                  example: "Jln. Ahmad Yani No. 123, Bandung"
+      responses:
+        201:
+          description: Vendor berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Vendor'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/vendors/{id}:
+    get:
+      tags:
+        - Vendor
+      summary: Detail Vendor
+      description: Ambil detail vendor beserta barang-barang yang disediakan. **Hanya Admin.**
+      operationId: getVendor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Detail vendor berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Vendor'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Vendor
+      summary: Update Vendor
+      description: Update data vendor. **Hanya Admin.**
+      operationId: updateVendor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nama:
+                  type: string
+                kontak_person:
+                  type: string
+                alamat:
+                  type: string
+      responses:
+        200:
+          description: Vendor berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Vendor'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    delete:
+      tags:
+        - Vendor
+      summary: Hapus Vendor
+      description: Hapus vendor. Tidak bisa dihapus jika masih ada barang yang menggunakan vendor ini. **Hanya Admin.**
+      operationId: deleteVendor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Vendor berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Vendor berhasil dihapus"
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          description: Vendor masih digunakan barang
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ==================== JABATAN ====================
+  /api/jabatans:
+    get:
+      tags:
+        - Jabatan
+      summary: List Jabatan
+      description: Ambil daftar semua jabatan. **Hanya Admin.**
+      operationId: listJabatan
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List jabatan berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Jabatan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Jabatan
+      summary: Buat Jabatan Baru
+      description: Buat jabatan baru. **Hanya Admin.**
+      operationId: createJabatan
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nama
+              properties:
+                nama:
+                  type: string
+                  example: "Staff IT"
+      responses:
+        201:
+          description: Jabatan berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Jabatan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/jabatans/{id}:
+    get:
+      tags:
+        - Jabatan
+      summary: Detail Jabatan
+      description: Ambil detail jabatan. **Hanya Admin.**
+      operationId: getJabatan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Detail jabatan berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Jabatan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Jabatan
+      summary: Update Jabatan
+      description: Update data jabatan. **Hanya Admin.**
+      operationId: updateJabatan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nama:
+                  type: string
+                  example: "Supervisor IT"
+      responses:
+        200:
+          description: Jabatan berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Jabatan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    delete:
+      tags:
+        - Jabatan
+      summary: Hapus Jabatan
+      description: Hapus jabatan. **Hanya Admin.**
+      operationId: deleteJabatan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Jabatan berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== UNIT TYPE ====================
+  /api/unit-types:
+    get:
+      tags:
+        - Unit Type
+      summary: List Unit Type
+      description: |
+        Ambil daftar unit type. Support filter parent_id untuk hierarchical data.
+        - Tanpa parent_id: Tampilkan tree parent + children
+        - parent_id=null: Hanya parent
+        - parent_id={id}: Children berdasarkan parent
+        
+        **Hanya Admin.**
+      operationId: listUnitTypes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: parent_id
+          in: query
+          description: Filter parent_id (null untuk parent, atau id untuk children)
+          schema:
+            type: string
+            example: "null"
+      responses:
+        200:
+          description: List unit type berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UnitType'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Unit Type
+      summary: Buat Unit Type Baru
+      description: Buat unit type baru dengan optional parent_id untuk hierarchy. **Hanya Admin.**
+      operationId: createUnitType
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: "Fakultas"
+                parent_id:
+                  type: integer
+                  nullable: true
+                  example: null
+                  description: ID parent untuk hierarchy (opsional)
+      responses:
+        201:
+          description: Unit type berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UnitType'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/unit-types/{id}:
+    get:
+      tags:
+        - Unit Type
+      summary: Detail Unit Type Beserta Children
+      description: Ambil detail unit type dan semua child-nya (jika ada). **Hanya Admin.**
+      operationId: getUnitType
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Detail unit type berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UnitType'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Unit Type
+      summary: Update Unit Type
+      description: Update data unit type. **Hanya Admin.**
+      operationId: updateUnitType
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Program Studi"
+                parent_id:
+                  type: integer
+                  nullable: true
+                  example: 1
+      responses:
+        200:
+          description: Unit type berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UnitType'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    delete:
+      tags:
+        - Unit Type
+      summary: Hapus Unit Type
+      description: Hapus unit type. **Hanya Admin.**
+      operationId: deleteUnitType
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Unit type berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== USER ====================
+  /api/users:
+    get:
+      tags:
+        - User
+      summary: List User
+      description: Ambil daftar semua user. **Hanya Admin.**
+      operationId: listUser
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List user berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserDetail'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - User
+      summary: Buat User Baru
+      description: Buat user baru. **Hanya Admin.**
+      operationId: createUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+                - jenis_kelamin
+                - jabatan_id
+                - unit_id
+                - role
+              properties:
+                username:
+                  type: string
+                  example: "gilang"
+                email:
+                  type: string
+                  format: email
+                  example: "gilang@mail.com"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+                nip:
+                  type: string
+                  example: "12345678"
+                jenis_kelamin:
+                  type: string
+                  enum: [Pria, Wanita]
+                  example: "Pria"
+                jabatan_id:
+                  type: integer
+                  example: 1
+                unit_id:
+                  type: integer
+                  example: 1
+                role:
+                  type: string
+                  enum: [user, admin]
+                  example: "user"
+      responses:
+        201:
+          description: User berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UserDetail'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/users/{id}:
+    get:
+      tags:
+        - User
+      summary: Detail User
+      description: Ambil detail user beserta jabatan dan unit. **Hanya Admin.**
+      operationId: getUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Detail user berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UserDetail'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - User
+      summary: Update User
+      description: Update data user. **Hanya Admin.**
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                nip:
+                  type: string
+                jenis_kelamin:
+                  type: string
+                  enum: [Pria, Wanita]
+                jabatan_id:
+                  type: integer
+                unit_id:
+                  type: integer
+                role:
+                  type: string
+                  enum: [user, admin]
+      responses:
+        200:
+          description: User berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/UserDetail'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    delete:
+      tags:
+        - User
+      summary: Hapus User
+      description: Hapus user. **Hanya Admin.**
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: User berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== ADMIN - SYNC ====================
+  /api/users/sync:
+    post:
+      tags:
+        - User
+      summary: Sinkronisasi User dari API Eksternal
+      description: |
+        Menghapus seluruh data users dan unit_types, lalu mengambil ulang data struktural
+        pegawai dari API UNIKOM. **Hanya Admin.**
+      operationId: syncUsers
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Sinkronisasi berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 500
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+  # ==================== ADMIN - DROPDOWN ====================
+  /api/dropdown:
+    get:
+      tags:
+        - User
+      summary: Dropdown Unit Organisasi
+      description: Ambil struktur unit/bagian organisasi berbentuk tree untuk dropdown. **Hanya Admin.**
+      operationId: dropdown
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Struktur unit berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        unit_id:
+                          type: integer
+                        children:
+                          type: array
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+  # ==================== ADMIN - REKAP VENDOR ====================
+  /api/rekap-vendor:
+    get:
+      tags:
+        - Vendor
+      summary: Rekap Pengajuan per Vendor
+      description: |
+        Rekap barang yang disetujui per vendor. Filter opsional dengan `id_aktivasi`.
+        Jika tidak dikirim, menggunakan periode aktif. **Hanya Admin.**
+      operationId: rekapVendor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id_aktivasi
+          in: query
+          description: ID aktivasi pengajuan (opsional)
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Rekap vendor berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vendor'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+  # ==================== ADMIN - DAFTAR PENGAJUAN ====================
+  /api/admin/daftar-pengajuan:
+    get:
+      tags:
+        - Pengajuan
+      summary: List Pengajuan untuk Admin
+      description: |
+        List pengajuan dengan filter untuk admin. **Hanya Admin.**
+        Filter tersedia: id_aktivasi, jabatan_id, bagian_id (unit), status, tipe.
+      operationId: adminListPengajuan
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id_aktivasi
+          in: query
+          description: Filter berdasarkan ID aktivasi
+          schema:
+            type: integer
+        - name: jabatan_id
+          in: query
+          description: Filter berdasarkan jabatan
+          schema:
+            type: integer
+        - name: bagian_id
+          in: query
+          description: Filter berdasarkan unit/bagian
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter berdasarkan status barang pengajuan
+          schema:
+            type: integer
+            example: 1
+        - name: tipe
+          in: query
+          description: Filter berdasarkan tipe pengajuan (tahunan, ujian, kelas)
+          schema:
+            type: string
+      responses:
+        200:
+          description: List pengajuan admin berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DaftarPengajuan'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+  # ==================== ADMIN - CETAK BERKAS ====================
+  /api/admin/cetak-berkas:
+    get:
+      tags:
+        - Pengajuan
+      summary: Cetak Berkas Pengajuan
+      description: |
+        Ambil rekapan barang pengajuan beserta total harga untuk berkas/cetak. **Hanya Admin.**
+      operationId: cetakBerkas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tahun
+          in: query
+          required: true
+          description: Tahun pengajuan
+          schema:
+            type: integer
+            example: 2026
+        - name: id_aktivasi
+          in: query
+          required: true
+          description: ID aktivasi pengajuan
+          schema:
+            type: integer
+        - name: tipe
+          in: query
+          description: Filter tipe aktivasi (rutin/nonrutin)
+          schema:
+            type: string
+        - name: kategori_atk
+          in: query
+          description: Filter kategori ATK (tahunan/kelas/ujian)
+          schema:
+            type: string
+      responses:
+        200:
+          description: Data berkas berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      tahun:
+                        type: integer
+                      id_aktivasi:
+                        type: integer
+                      tipe:
+                        type: string
+                      kategori_atk:
+                        type: string
+                      total_harga:
+                        type: number
+                      barang_pengajuan:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            nama_barang:
+                              type: string
+                            unit:
+                              type: string
+                            jumlah:
+                              type: integer
+                            harga:
+                              type: number
+                            subtotal:
+                              type: number
+                            vendor:
+                              type: string
+                      barang_pengajuan_lainnya:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            nama_barang:
+                              type: string
+                            kategori:
+                              type: string
+                            satuan:
+                              type: string
+                            jumlah:
+                              type: integer
+                            harga:
+                              type: number
+                            subtotal:
+                              type: number
+                            vendor:
+                              type: string
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+
+  # ==================== PENGUMUMAN ====================
+  /api/pengumuman:
+    get:
+      tags:
+        - Pengumuman
+      summary: List Pengumuman
+      description: Ambil daftar semua pengumuman.
+      operationId: listPengumuman
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List pengumuman berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pengumuman'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Pengumuman
+      summary: Buat Pengumuman Baru
+      description: Buat pengumuman baru dengan judul, deskripsi, dan gambar. **Hanya Admin.**
+      operationId: createPengumuman
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - judul
+              properties:
+                judul:
+                  type: string
+                  example: "Pengumuman Libur Nasional"
+                deskripsi:
+                  type: string
+                  example: "Libur tanggal 17 Agustus 2026"
+                gambar:
+                  type: string
+                  format: binary
+                  description: File gambar (jpg, png, jpeg - max 2MB)
+      responses:
+        201:
+          description: Pengumuman berhasil dibuat
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Pengumuman'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/pengumuman/{id}:
+    get:
+      tags:
+        - Pengumuman
+      summary: Detail Pengumuman
+      description: Ambil detail pengumuman beserta gambarnya.
+      operationId: getPengumuman
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Detail pengumuman berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Pengumuman'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Pengumuman
+      summary: Update Pengumuman
+      description: |
+        Update pengumuman. Gunakan PUT + multipart/form-data jika update dengan gambar baru.
+        **Hanya Admin.**
+      operationId: updatePengumuman
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                judul:
+                  type: string
+                  example: "Update Pengumuman"
+                deskripsi:
+                  type: string
+                  example: "Isi pengumuman terbaru"
+                gambar:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: Pengumuman berhasil diupdate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Pengumuman'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    delete:
+      tags:
+        - Pengumuman
+      summary: Hapus Pengumuman
+      description: Hapus pengumuman. **Hanya Admin.**
+      operationId: deletePengumuman
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Pengumuman berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== TEST ====================
+  /api/swagger-test:
+    get:
+      tags:
+        - Test
+      summary: Test Swagger
+      description: Endpoint untuk testing dokumentasi Swagger.
+      operationId: testSwagger
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Swagger is working"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Gunakan Bearer Token yang didapat dari endpoint login.
+        
+        Format: `Authorization: Bearer {token}`
+        
+        Contoh:
+        ```
+        Authorization: Bearer 1|abcdef123456...
+        ```
+
+  schemas:
+    # ==================== ERROR RESPONSES ====================
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error message"
+        errors:
+          type: object
+          example: { "field": ["error message"] }
+
+    # ==================== AUTH SCHEMAS ====================
+    UserDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: "gilang"
+        email:
+          type: string
+          format: email
+          example: "gilang@mail.com"
+        nip:
+          type: string
+          example: "12345678"
+        jenis_kelamin:
+          type: string
+          enum: [Pria, Wanita]
+        role:
+          type: string
+          enum: [user, admin]
+          example: "user"
+        foto:
+          type: string
+          nullable: true
+        jabatan:
+          $ref: '#/components/schemas/Jabatan'
+        unit:
+          $ref: '#/components/schemas/UnitType'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ==================== AKTIVASI PENGAJUAN SCHEMAS ====================
+    AktivasiPengajuan:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        id_pengajuan:
+          type: integer
+          example: 1
+        aktif_mulai:
+          type: string
+          format: date
+          example: "2026-01-01"
+        aktif_selesai:
+          type: string
+          format: date
+          example: "2026-01-31"
+        tipe:
+          type: string
+          enum: [tahunan, ujian, kelas]
+          example: "tahunan"
+        tahun_akademik:
+          type: string
+          example: "2025/2026"
+        pengajuan:
+          type: object
+          properties:
+            id:
+              type: integer
+            tipe:
+              type: string
+              enum: [tahunan, ujian, kelas]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ==================== BARANG SCHEMAS ====================
+    Barang:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nama:
+          type: string
+          example: "Kertas A4 80gsm"
+        vendor_id:
+          type: integer
+          example: 1
+        vendor:
+          $ref: '#/components/schemas/Vendor'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ==================== PENGAJUAN SCHEMAS ====================
+    DaftarPengajuan:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+        id_aktivasi:
+          type: integer
+        catatan:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date
+        surat_pengajuan:
+          type: string
+          nullable: true
+          description: URL file surat pengajuan
+        user:
+          $ref: '#/components/schemas/UserDetail'
+        aktivasi:
+          $ref: '#/components/schemas/AktivasiPengajuan'
+        barang:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              id_barang:
+                type: integer
+              jumlah:
+                type: integer
+              jumlah_disetujui:
+                type: integer
+              status:
+                type: boolean
+                example: false
+              barang:
+                $ref: '#/components/schemas/Barang'
+        barangLainnya:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              nama:
+                type: string
+              jumlah:
+                type: integer
+              kategori:
+                type: string
+                enum: [habis_pakai, tidak_habis_pakai]
+              satuan:
+                type: string
+              alasan:
+                type: string
+              bukti_foto:
+                type: string
+                nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ==================== VENDOR SCHEMAS ====================
+    Vendor:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nama:
+          type: string
+          example: "PT Sumber Makmur"
+        kontak:
+          type: string
+          example: "081234567890"
+        alamat:
+          type: string
+          example: "Jln. Ahmad Yani No. 123, Bandung"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ==================== JABATAN SCHEMAS ====================
+    Jabatan:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nama:
+          type: string
+          example: "Staff IT"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ==================== UNIT TYPE SCHEMAS ====================
+    UnitType:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nama:
+          type: string
+          example: "Fakultas"
+        parent_id:
+          type: integer
+          nullable: true
+        children:
+          type: array
+          items:
+            type: object
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ==================== PENGUMUMAN SCHEMAS ====================
+    Pengumuman:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        judul:
+          type: string
+          example: "Pengumuman Libur Nasional"
+        deskripsi:
+          type: string
+          example: "Libur tanggal 17 Agustus 2026"
+        gambar:
+          type: string
+          nullable: true
+          description: URL gambar pengumuman
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Token tidak valid atau expired
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "unauthenticated"
+
+    Forbidden:
+      description: Forbidden - Akses ditolak (bukan admin atau role tidak sesuai)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "akses ditolak"
+
+    NotFound:
+      description: Not Found - Resource tidak ditemukan
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Data tidak ditemukan"
+
+    UnprocessableEntity:
+      description: Validation Error - Validasi gagal
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Validation failed"
+              errors:
+                type: object
+                example:
+                  email: ["Email sudah terdaftar"]
+                  password: ["Password minimal 8 karakter"]
